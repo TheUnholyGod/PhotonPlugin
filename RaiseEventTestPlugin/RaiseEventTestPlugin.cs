@@ -8,6 +8,7 @@ using Photon.Hive;
 using Photon.Hive.Plugin;
 using MySql.Data;
 using MySql.Data.MySqlClient;
+using System.Diagnostics;
 
 namespace TestPlugin
 {
@@ -57,7 +58,16 @@ namespace TestPlugin
                 PackageDecoder pc = new PackageDecoder();
                 string PlayerName = pc.GetValue(RecvdMessage, "PlayerName");
                 string Password = pc.GetValue(RecvdMessage, "Password");
-                
+                string sql = "SELECT accountdb.password FROM accountdb WHERE accountdb.account_name = " + PlayerName;
+                string olwpw = ConnectToSQL(sql);
+                if (Password != olwpw)
+                {
+                    DisconnectFromSQL();
+
+                    sql = "INSERT INTO accountdb (account_name, password, date_created) VALUES('" + PlayerName + "', '" + Password + "', now())";
+                    ConnectToSQL(sql);
+                }
+                DisconnectFromSQL();
             }
         }
 
@@ -72,8 +82,30 @@ namespace TestPlugin
             catch(Exception ex)
             {
                 Console.WriteLine(ex.ToString());
+                
             }
         }
+
+        public string ConnectToSQL(string _cmd)
+        {
+            string connStr = "server=localhost;user=root;database=spaceships;port=3306;password=DM2341sidm;SslMode=none";
+            conn = new MySqlConnection(connStr);
+            try
+            {
+                conn.Open();
+                MySqlCommand cmd = new MySqlCommand(_cmd, conn);
+                cmd.ExecuteNonQuery();
+                return cmd.ToString();
+                
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+
+            }
+            return "";
+        }
+
         public void DisconnectFromSQL()
         {
             conn.Close();
