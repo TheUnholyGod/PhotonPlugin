@@ -14,7 +14,7 @@ namespace TestPlugin
 {
     public class RaiseEventTestPlugin : PluginBase
     {
-        MySqlConnection conn;
+        SQLInterface connector = new SQLInterface();
 
         public string ServerString
         {
@@ -31,8 +31,6 @@ namespace TestPlugin
             this.UseStrictMode = true;
             this.ServerString = "ServerMessage";
             this.CallsCount = 0;
-
-            ConnectToSQL();
         }
         public override string Name
         {
@@ -58,57 +56,29 @@ namespace TestPlugin
                 PackageDecoder pc = new PackageDecoder();
                 string PlayerName = pc.GetValue(RecvdMessage, "PlayerName");
                 string Password = pc.GetValue(RecvdMessage, "Password");
-                string sql = "SELECT accountdb.password FROM accountdb WHERE accountdb.account_name = " + PlayerName;
-                string olwpw = ConnectToSQL(sql);
-                if (Password != olwpw)
+
+                this.PluginHost.BroadcastEvent(target: ReciverGroup.All, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"WELCOMETOFUCKYOU" } }, evCode: info.Request.EvCode, cacheOp: 0);
+
+                string usernameexists = connector.ConnectAndRunScalar("SELECT COUNT(accountdb.account_name) FROM accountdb WHERE account_name = '" + PlayerName + "'");
+                if (Convert.ToInt32(usernameexists) == 0)
                 {
-                    DisconnectFromSQL();
-
-                    sql = "INSERT INTO accountdb (account_name, password, date_created) VALUES('" + PlayerName + "', '" + Password + "', now())";
-                    ConnectToSQL(sql);
+                    int rowsaffected = connector.ConnectAndRunNonQuery("INSERT INTO accountdb (account_name, password, date_created) VALUES('" + PlayerName + "', '" + Password + "', now())");
+                    if (rowsaffected == 1)
+                    {
+                        this.PluginHost.BroadcastEvent(target: ReciverGroup.All, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"Signup Success" } }, evCode: info.Request.EvCode, cacheOp: 0);
+                    }
                 }
-                DisconnectFromSQL();
+                else
+                {
+                    string olwpw = connector.ConnectAndRunScalar("SELECT accountdb.password FROM accountdb WHERE accountdb.account_name = '" + PlayerName + "'");
+                    if (Password != olwpw)
+                    {
+                        this.PluginHost.BroadcastEvent(target: ReciverGroup.All, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"NotValid" } }, evCode: info.Request.EvCode, cacheOp: 0);
+                        return;
+                    }
+                    this.PluginHost.BroadcastEvent(target: ReciverGroup.All, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"LoginSuccess" } }, evCode: info.Request.EvCode, cacheOp: 0);
+                }
             }
-        }
-
-        public void ConnectToSQL()
-        {
-            string connStr = "server=localhost;user=root;database=spaceships;port=3306;password=DM2341sidm;SslMode=none";
-            conn = new MySqlConnection(connStr);
-            try
-            {
-                conn.Open();
-            }
-            catch(Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
-                
-            }
-        }
-
-        public string ConnectToSQL(string _cmd)
-        {
-            string connStr = "server=localhost;user=root;database=spaceships;port=3306;password=DM2341sidm;SslMode=none";
-            conn = new MySqlConnection(connStr);
-            try
-            {
-                conn.Open();
-                MySqlCommand cmd = new MySqlCommand(_cmd, conn);
-                cmd.ExecuteNonQuery();
-                return cmd.ToString();
-                
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
-
-            }
-            return "";
-        }
-
-        public void DisconnectFromSQL()
-        {
-            conn.Close();
         }
     }
 }
