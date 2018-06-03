@@ -22,10 +22,10 @@ namespace TestPlugin
             return ret;
         }
 
-        public string ConnectAndRunScalar(string _query)
+        public object ConnectAndRunScalar(string _query)
         {
             ConnectToSQL();
-            string ret = ExecuteSingleQuery(_query);
+            object ret = ExecuteSingleQuery(_query);
             DisconnectFromSQL();
             return ret;
         }
@@ -68,13 +68,13 @@ namespace TestPlugin
             return command.ExecuteNonQuery();
         }
 
-        public string ExecuteSingleQuery(string _query)
+        public object ExecuteSingleQuery(string _query)
         {
             if (_query.Length <= 0)
                 return "";
 
             MySqlCommand command = new MySqlCommand(_query,conn);
-            return (string)(command.ExecuteScalar());
+            return (command.ExecuteScalar());
         }
 
         public List<string> ExecuteQuery(string _query)
