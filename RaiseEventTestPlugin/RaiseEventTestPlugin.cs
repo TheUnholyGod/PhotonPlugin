@@ -10,11 +10,13 @@ using MySql.Data;
 using MySql.Data.MySqlClient;
 using System.Diagnostics;
 
+
 namespace TestPlugin
 {
     public class RaiseEventTestPlugin : PluginBase
     {
         SQLInterface connector = new SQLInterface();
+        MultithreadManager multithreadmanager = null;
 
         public string ServerString
         {
@@ -39,6 +41,13 @@ namespace TestPlugin
                 return this.GetType().Name;
             }
         }
+
+        public override bool SetupInstance(IPluginHost host, Dictionary<string, string> config, out string errorMsg)
+        {
+            multithreadmanager = MultithreadManager.GetInstance();
+            return base.SetupInstance(host, config, out errorMsg);
+        }
+
         public override void OnRaiseEvent(IRaiseEventCallInfo info)
         {
             try
@@ -55,11 +64,10 @@ namespace TestPlugin
                 case 1:
                     {
                         string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
-                        PackageDecoder pc = new PackageDecoder();
-                        string PlayerName = pc.GetValue(RecvdMessage, "PlayerName");
-                        string Password = pc.GetValue(RecvdMessage, "Password");
+                        string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
+                        string Password = PackageDecoder.GetValue(RecvdMessage, "Password");
 
-                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"WELCOMETOFUCKYOU" } }, evCode: info.Request.EvCode, cacheOp: 0);
+                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"WELCOME" } }, evCode: info.Request.EvCode, cacheOp: 0);
 
                         int usernameexists = Convert.ToInt32(connector.ConnectAndRunScalar("SELECT COUNT(accountdb.account_name) FROM accountdb WHERE account_name = '" + PlayerName + "'"));
                         if (Convert.ToInt32(usernameexists) == 0)
@@ -78,21 +86,18 @@ namespace TestPlugin
                                 this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"NotValid" } }, evCode: (byte)(69), cacheOp: 0);
                                 return;
                             }
-
-
-                            this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"LoginSuccess" } }, evCode: (byte)(5), cacheOp: 0);
-
                         }
+                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"LoginSuccess" } }, evCode: (byte)(5), cacheOp: 0);
+
                         break;
                     }
                 case 2:
                     {
                         string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
-                        PackageDecoder pc = new PackageDecoder();
-                        string PlayerName = pc.GetValue(RecvdMessage, "PlayerName");
-                        string posx = pc.GetValue(RecvdMessage, "posx");
-                        string posy = pc.GetValue(RecvdMessage, "posy");
-                        string posz = pc.GetValue(RecvdMessage, "posz");
+                        string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
+                        string posx = PackageDecoder.GetValue(RecvdMessage, "posx");
+                        string posy = PackageDecoder.GetValue(RecvdMessage, "posy");
+                        string posz = PackageDecoder.GetValue(RecvdMessage, "posz");
                         connector.ConnectAndRunNonQuery("UPDATE accountdb SET posx = " + posx + ",posy=" + posy + ",posz=" + posz + " WHERE account_name = '" + PlayerName + "'");
 
                         break;
@@ -100,8 +105,7 @@ namespace TestPlugin
                 case 3:
                     {
                         string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
-                        PackageDecoder pc = new PackageDecoder();
-                        string PlayerName = pc.GetValue(RecvdMessage, "PlayerName");
+                        string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
 
                         string posx = Convert.ToString((int)connector.ConnectAndRunScalar("Select posx from accountdb where account_name = '" + PlayerName + "'"));
                         string posy = Convert.ToString((int)connector.ConnectAndRunScalar("Select posy from accountdb where account_name = '" + PlayerName + "'"));
@@ -112,19 +116,27 @@ namespace TestPlugin
                 case 6:
                     {
                         string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
-                        PackageDecoder pc = new PackageDecoder();
-                        string PlayerName = pc.GetValue(RecvdMessage, "PlayerName");
-                        string Guild = pc.GetValue(RecvdMessage, "Guild");
+                        string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
+                        string Guild = PackageDecoder.GetValue(RecvdMessage, "Guild");
                         connector.ConnectAndRunNonQuery("UPDATE accountdb SET guild = '" + Guild + "' WHERE account_name = '" + PlayerName + "'");
                         break;
                     }
                 case 7:
                     {
                         string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
-                        PackageDecoder pc = new PackageDecoder();
-                        string PlayerName = pc.GetValue(RecvdMessage, "PlayerName");
+                        string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
                         string guild = Convert.ToString(connector.ConnectAndRunScalar("SELECT guild FROM accountdb WHERE account_name = '" + PlayerName + "'"));
-                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)("<Guild="+guild+" >") } }, evCode: (byte)(3), cacheOp: 0);
+                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)("<Guild="+guild+" >") } }, evCode: (byte)(7), cacheOp: 0);
+
+                        break;
+                    }
+                case 99:
+                    {
+                        string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
+                        string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
+                        string Password = PackageDecoder.GetValue(RecvdMessage, "Password");
+
+                        connector.ConnectAndRunNonQuery("UPDATE accountdb SET password = '" + Password + "' WHERE account_name = '" + PlayerName + "'");
 
                         break;
                     }
