@@ -45,7 +45,7 @@ namespace TestPlugin
         /// False:
         ///     The dictionary already contains that name
         /// </returns>
-        public bool AddThread(string _name, ThreadStart _func, object _params)
+        public bool AddThread(string _name, ParameterizedThreadStart _func, object _params)
         {
             if (m_threads.ContainsKey(_name))
                 return false;

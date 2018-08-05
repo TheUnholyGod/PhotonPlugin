@@ -17,6 +17,7 @@ namespace TestPlugin
     {
         SQLInterface connector = new SQLInterface();
         MultithreadManager multithreadmanager = null;
+        List<AI> ailist = new List<AI>();
 
         public string ServerString
         {
@@ -45,6 +46,9 @@ namespace TestPlugin
         public override bool SetupInstance(IPluginHost host, Dictionary<string, string> config, out string errorMsg)
         {
             multithreadmanager = MultithreadManager.GetInstance();
+            //host.TryRegisterType(typeof(CustomObject), (byte)EVENT_CODES.CO_CUSTOMOBJECT,
+            //CustomObject.Serialize,
+            //CustomObject.Deserialize);
             return base.SetupInstance(host, config, out errorMsg);
         }
 
@@ -63,11 +67,19 @@ namespace TestPlugin
             {
                 case 1:
                     {
-                        string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
-                        string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
-                        string Password = PackageDecoder.GetValue(RecvdMessage, "Password");
+                        //string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
+                        //string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
+                        //string Password = PackageDecoder.GetValue(RecvdMessage, "Password");
 
-                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"WELCOME" } }, evCode: info.Request.EvCode, cacheOp: 0);
+                        AccountdDetails ad = (AccountdDetails)AccountdDetails.Deserialize((byte[])info.Request.Data);
+                        string PlayerName = ad.userid;
+                        string Password = ad.pw;
+
+                        CustomObject ret = new CustomObject();
+                        ret.Init();
+                        ret.message = "WELCOME";
+
+                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, CustomObject.Serialize(ret) } }, evCode: info.Request.EvCode, cacheOp: 0);
 
                         int usernameexists = Convert.ToInt32(connector.ConnectAndRunScalar("SELECT COUNT(accountdb.account_name) FROM accountdb WHERE account_name = '" + PlayerName + "'"));
                         if (Convert.ToInt32(usernameexists) == 0)
@@ -75,7 +87,8 @@ namespace TestPlugin
                             int rowsaffected = connector.ConnectAndRunNonQuery("INSERT INTO accountdb (account_name, password, date_created) VALUES('" + PlayerName + "', '" + Password + "', now())");
                             if (rowsaffected == 1)
                             {
-                                this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"Signup Success" } }, evCode: info.Request.EvCode, cacheOp: 0);
+                                ret.message = "SIGNUP SUCCESS";
+                                this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, CustomObject.Serialize(ret) } }, evCode: info.Request.EvCode, cacheOp: 0);
                             }
                         }
                         else
@@ -83,64 +96,102 @@ namespace TestPlugin
                             string olwpw = Convert.ToString(connector.ConnectAndRunScalar("SELECT accountdb.password FROM accountdb WHERE accountdb.account_name = '" + PlayerName + "'"));
                             if (Password != olwpw)
                             {
-                                this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"NotValid" } }, evCode: (byte)(69), cacheOp: 0);
+                                ret.message = "NOT VALID";
+
+                                this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, CustomObject.Serialize(ret) } }, evCode: (byte)(69), cacheOp: 0);
                                 return;
                             }
                         }
-                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)"LoginSuccess" } }, evCode: (byte)(5), cacheOp: 0);
+                        ret.message = "LOGIN SUCESS";
+
+                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, CustomObject.Serialize(ret) } }, evCode: (byte)(5), cacheOp: 0);
 
                         break;
                     }
                 case 2:
                     {
+                        PlayerPos pp = (PlayerPos)PlayerPos.Deserialize((byte[])info.Request.Data);
+
                         string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
-                        string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
-                        string posx = PackageDecoder.GetValue(RecvdMessage, "posx");
-                        string posy = PackageDecoder.GetValue(RecvdMessage, "posy");
-                        string posz = PackageDecoder.GetValue(RecvdMessage, "posz");
+                        string PlayerName = pp.userid; //PackageDecoder.GetValue(RecvdMessage, "PlayerName");
+                        string posx = Convert.ToString(pp.posx); //PackageDecoder.GetValue(RecvdMessage, "posx");
+                        string posy = Convert.ToString(pp.posy);//PackageDecoder.GetValue(RecvdMessage, "posy");
+                        string posz = Convert.ToString(pp.posz);//PackageDecoder.GetValue(RecvdMessage, "posz");
                         connector.ConnectAndRunNonQuery("UPDATE accountdb SET posx = " + posx + ",posy=" + posy + ",posz=" + posz + " WHERE account_name = '" + PlayerName + "'");
 
                         break;
                     }
                 case 3:
                     {
-                        string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
-                        string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
+                        PlayerPos oldpp = (PlayerPos)PlayerPos.Deserialize((byte[])info.Request.Data);
+                        string PlayerName = oldpp.userid;
+                        PlayerPos pp = new PlayerPos();
+                        pp.Init();
+                        pp.userid = PackageDecoder.GetValue(PlayerName, "PlayerName");
 
-                        string posx = Convert.ToString((int)connector.ConnectAndRunScalar("Select posx from accountdb where account_name = '" + PlayerName + "'"));
-                        string posy = Convert.ToString((int)connector.ConnectAndRunScalar("Select posy from accountdb where account_name = '" + PlayerName + "'"));
-                        string posz = Convert.ToString((int)connector.ConnectAndRunScalar("Select posz from accountdb where account_name = '" + PlayerName + "'"));
-                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)("<posx=" + posx + " posy=" + posy + " posz=" + posz + " >") } }, evCode: (byte)(3), cacheOp: 0);
+                        pp.posx = (int)connector.ConnectAndRunScalar("Select posx from accountdb where account_name = '" + PlayerName + "'");
+                        pp.posy = (int)connector.ConnectAndRunScalar("Select posy from accountdb where account_name = '" + PlayerName + "'");
+                        pp.posz = (int)connector.ConnectAndRunScalar("Select posz from accountdb where account_name = '" + PlayerName + "'");
+                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, PlayerPos.Serialize(pp) } }, evCode: (byte)(3), cacheOp: 0);
                         break;
                     }
                 case 6:
                     {
-                        string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
-                        string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
-                        string Guild = PackageDecoder.GetValue(RecvdMessage, "Guild");
+                        PlayerPos pp = (PlayerPos)PlayerPos.Deserialize((byte[])info.Request.Data);
+                        string PlayerName = pp.userid;
+                        string Guild = pp.guild;
                         connector.ConnectAndRunNonQuery("UPDATE accountdb SET guild = '" + Guild + "' WHERE account_name = '" + PlayerName + "'");
                         break;
                     }
                 case 7:
                     {
-                        string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
-                        string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
-                        string guild = Convert.ToString(connector.ConnectAndRunScalar("SELECT guild FROM accountdb WHERE account_name = '" + PlayerName + "'"));
-                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, (string)("<Guild="+guild+" >") } }, evCode: (byte)(7), cacheOp: 0);
+                        PlayerPos pp = (PlayerPos)PlayerPos.Deserialize((byte[])info.Request.Data);
+                        string PlayerName = pp.userid;
+                        pp.guild = Convert.ToString(connector.ConnectAndRunScalar("SELECT guild FROM accountdb WHERE account_name = '" + PlayerName + "'"));
+                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, senderActor: 0, targetGroup: 0, data: new Dictionary<byte, object>() { { (byte)245, PlayerPos.Serialize(pp) } }, evCode: (byte)(7), cacheOp: 0);
 
                         break;
                     }
                 case 99:
                     {
-                        string RecvdMessage = Encoding.Default.GetString((byte[])info.Request.Data);
-                        string PlayerName = PackageDecoder.GetValue(RecvdMessage, "PlayerName");
-                        string Password = PackageDecoder.GetValue(RecvdMessage, "Password");
+                        AccountdDetails ad = (AccountdDetails)AccountdDetails.Deserialize((byte[])info.Request.Data);
+                        string PlayerName = ad.userid;
+                        string Password = ad.pw;
 
                         connector.ConnectAndRunNonQuery("UPDATE accountdb SET password = '" + Password + "' WHERE account_name = '" + PlayerName + "'");
 
                         break;
                     }
+                case 101:
+                    {
+                        MonsterInfo mi = (MonsterInfo)MonsterInfo.Deserialize((byte[])info.Request.Data);
+                        AI ai = new TestPlugin.AI();
+                        ai._info = mi;
+                        multithreadmanager.AddThread(ai._info.name, new System.Threading.ParameterizedThreadStart(ai.Update), (object)this);
+                        multithreadmanager.StartThread(ai._info.name);
+
+                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, 
+                            senderActor: 0, 
+                            targetGroup: 0, 
+                            data: new Dictionary<byte, object>()
+                            { { (byte)245, MonsterInfo.Serialize(mi) } }, 
+                            evCode: (byte)(102), 
+                            cacheOp: 0);
+
+                        break;
+                    }
             }
+        }
+
+        public void SendMessage(int _evCode, byte[] _object)
+        {
+            this.PluginHost.BroadcastEvent(target: 0,
+                            senderActor: 0,
+                            targetGroup: 0,
+                            data: new Dictionary<byte, object>()
+                            { { (byte)245, _object } },
+                            evCode: (byte)(_evCode),
+                            cacheOp: 0);
         }
     }
 }
