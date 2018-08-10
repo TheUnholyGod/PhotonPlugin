@@ -10,7 +10,7 @@ namespace TestPlugin
 {
     public class CustomObject
     {
-        protected enum DataTypes
+        public enum DataTypes
         {
             BYTE,
             BOOL,
@@ -28,19 +28,20 @@ namespace TestPlugin
             DICTIONARY_OV,
             DICTIONARY_KO,
             DICTIONARY_KV,
+            LIST,
             NULL,
         }
-        List<DataTypes> _types = new List<DataTypes>();
-        List<FieldInfo> _fields = new List<FieldInfo>();
-        public byte id { get; set; } = 0;
-        public string targetReceiverName = "";
-        public string objectName = "";
-        public string message = "";
+        public List<FieldInfo> _fields = new List<FieldInfo>();
+        public List<DataTypes> _types = new List<DataTypes>();
+        public byte id = 0;
+        public string targetReceiverName = "\0";
+        public string objectName = "\0";
+        public string message = "\0";
 
         public static object Deserialize(byte[] data)
         {
             CustomObject customObject = new CustomObject();
-            
+
             GetFromBinary(data, customObject);
             return customObject;
 
@@ -85,6 +86,7 @@ namespace TestPlugin
 
         protected static void GetFromBinary(int _index, CustomObject _object, BinaryReader br)
         {
+            Console.Write("\n" + _object._fields[_index].Name);
             switch (_object._types[_index])
             {
                 case DataTypes.BYTE:
@@ -106,7 +108,7 @@ namespace TestPlugin
 
                     break;
                 case DataTypes.FLOAT:
-                    _object._fields[_index].SetValue(_object, (float)br.ReadDouble());
+                    _object._fields[_index].SetValue(_object, br.ReadSingle());
 
                     break;
                 case DataTypes.DOUBLE:
@@ -115,6 +117,17 @@ namespace TestPlugin
                     break;
                 case DataTypes.STRING:
                     _object._fields[_index].SetValue(_object, br.ReadString());
+
+                    break;
+                case DataTypes.LIST:
+                    List<int> list = new List<int>();
+                    int size = br.ReadInt32();
+                    for (int i = 0; i < size; ++i)
+                    {
+                        list.Add(br.ReadInt32());
+                    }
+
+                    _object._fields[_index].SetValue(_object, list);
 
                     break;
             }
@@ -148,6 +161,15 @@ namespace TestPlugin
                     break;
                 case DataTypes.STRING:
                     _bw.Write((string)_obj);
+                    break;
+                case DataTypes.LIST:
+                    List<int> li = (List<int>)_obj;
+                    _bw.Write(li.Count);
+
+                    foreach (int i in li)
+                    {
+                        _bw.Write(i);
+                    }
                     break;
             }
         }
@@ -191,7 +213,7 @@ namespace TestPlugin
                         _t = DataTypes.LONG;
                         break;
                     }
-                case "float":
+                case "single":
                     {
                         _t = DataTypes.FLOAT;
                         break;
@@ -206,6 +228,11 @@ namespace TestPlugin
                         _t = DataTypes.STRING;
                         break;
                     }
+                case "list`1":
+                    {
+                        _t = DataTypes.LIST;
+                        break;
+                    }
             }
             return _t;
         }
@@ -217,20 +244,17 @@ namespace TestPlugin
                                               BindingFlags.NonPublic |
                                               BindingFlags.Instance))
             {
+
+                if (i.Name == type.GetField("_fields").Name || i.Name == type.GetField("_types").Name)
+                    continue;
                 DataTypes _datat = GetVariableType(i.GetValue(this));
                 if (_datat != DataTypes.NULL)
                 {
                     _types.Add(_datat);
                     _fields.Add(i);
                 }
-                Console.Write("{0} - type {1}\n", i.Name,
-                           i.GetValue(this).GetType().Name);
             }
 
-            foreach (DataTypes i in _types)
-            {
-                Console.Write(i.ToString() + "\n");
-            }
         }
     }
 
@@ -252,9 +276,10 @@ namespace TestPlugin
     class PlayerPos : CustomObject
     {
         public string userid = "";
-        public int posx = 0
-            , posy = 0
-            , posz = 0;
+        public float posx = 0.0f
+            , posy = 0.0f
+            , posz = 0.0f,
+            hp = 0.0f;
         public string guild = "";
         public static object Deserialize(byte[] data)
         {
@@ -268,13 +293,20 @@ namespace TestPlugin
     class MonsterInfo : CustomObject
     {
         public string name = "";
-        public int damage = 0,
-            hp = 0,
-            maxhp = 0,
-            speed = 0, 
-            posx = 0,
-            posy = 0,
-            posz = 0;
+        public float damage = 0.0f,
+            hp = 0.0f,
+            maxhp = 0.0f,
+            speed = 0.0f,
+            posx = 0.0f,
+            posy = 0.0f,
+            posz = 0.0f,
+            newposx = 0.0f,
+            newposz = 0.0f,
+            playerposx = 0.0f,
+            playerposz = 0.0f,
+            playerhp = 0.0f;
+
+
 
         public static object Deserialize(byte[] data)
         {
@@ -282,6 +314,32 @@ namespace TestPlugin
             CustomObject.GetFromBinary(data, customObject);
             return customObject;
 
+        }
+    }
+
+    class PartitioningInfo : CustomObject
+    {
+        public int currtile = 0;
+        public float playerposx = 0.0f,
+        playerposz = 0.0f;
+        public string objname = "";
+        public static object Deserialize(byte[] data)
+        {
+            PartitioningInfo customObject = new PartitioningInfo();
+            CustomObject.GetFromBinary(data, customObject);
+            return customObject;
+
+        }
+    }
+
+    class ListPartitioningInfo : PartitioningInfo
+    {
+        public List<int> _multitile = new List<int>();
+        public static object Deserialize(byte[] data)
+        {
+            ListPartitioningInfo customObject = new ListPartitioningInfo();
+            CustomObject.GetFromBinary(data, customObject);
+            return customObject;
         }
     }
 }

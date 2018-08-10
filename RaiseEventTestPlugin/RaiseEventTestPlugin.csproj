@@ -53,6 +53,7 @@
   <ItemGroup>
     <Compile Include="AI.cs" />
     <Compile Include="CustomDataTypes.cs" />
+    <Compile Include="MapPartitioningButNotPartitioningIsJustSplittingUpTheMap.cs" />
     <Compile Include="MultithreadManager.cs" />
     <Compile Include="PackageDecoder.cs" />
     <Compile Include="PluginFactory.cs" />

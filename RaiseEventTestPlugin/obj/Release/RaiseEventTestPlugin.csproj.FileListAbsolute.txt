@@ -1,4 +1,3 @@
-C:\Users\Chrish\Documents\GitHub\PhotonPlugin\RaiseEventTestPlugin\obj\Release\RaiseEventTestPlugin.csprojResolveAssemblyReference.cache
 C:\Users\Chrish\Documents\GitHub\PhotonPlugin\RaiseEventTestPlugin\bin\Release\RaiseEventTestPlugin.dll
 C:\Users\Chrish\Documents\GitHub\PhotonPlugin\RaiseEventTestPlugin\bin\Release\RaiseEventTestPlugin.pdb
 C:\Users\Chrish\Documents\GitHub\PhotonPlugin\RaiseEventTestPlugin\bin\Release\MySql.Data.dll
@@ -11,5 +10,6 @@ C:\Users\Chrish\Documents\GitHub\PhotonPlugin\RaiseEventTestPlugin\bin\Release\P
 C:\Users\Chrish\Documents\GitHub\PhotonPlugin\RaiseEventTestPlugin\bin\Release\Photon.SocketServer.xml
 C:\Users\Chrish\Documents\GitHub\PhotonPlugin\RaiseEventTestPlugin\bin\Release\ExitGamesLibs.pdb
 C:\Users\Chrish\Documents\GitHub\PhotonPlugin\RaiseEventTestPlugin\bin\Release\ExitGamesLibs.xml
+C:\Users\Chrish\Documents\GitHub\PhotonPlugin\RaiseEventTestPlugin\obj\Release\RaiseEventTestPlugin.csprojResolveAssemblyReference.cache
 C:\Users\Chrish\Documents\GitHub\PhotonPlugin\RaiseEventTestPlugin\obj\Release\RaiseEventTestPlugin.dll
 C:\Users\Chrish\Documents\GitHub\PhotonPlugin\RaiseEventTestPlugin\obj\Release\RaiseEventTestPlugin.pdb

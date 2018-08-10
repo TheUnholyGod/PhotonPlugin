@@ -46,6 +46,8 @@ namespace TestPlugin
         public override bool SetupInstance(IPluginHost host, Dictionary<string, string> config, out string errorMsg)
         {
             multithreadmanager = MultithreadManager.GetInstance();
+            //multithreadmanager.AddThread("aiManager", new System.Threading.ParameterizedThreadStart(UpdateAI), (object)this);
+            //multithreadmanager.StartThread("aiManager");
             //host.TryRegisterType(typeof(CustomObject), (byte)EVENT_CODES.CO_CUSTOMOBJECT,
             //CustomObject.Serialize,
             //CustomObject.Deserialize);
@@ -164,10 +166,14 @@ namespace TestPlugin
                     }
                 case 101:
                     {
+
+
                         MonsterInfo mi = (MonsterInfo)MonsterInfo.Deserialize((byte[])info.Request.Data);
                         AI ai = new TestPlugin.AI();
                         ai._info = mi;
-                        multithreadmanager.AddThread(ai._info.name, new System.Threading.ParameterizedThreadStart(ai.Update), (object)this);
+                        ailist.Add(ai);
+
+                        multithreadmanager.AddThread(ai._info.name, new System.Threading.ParameterizedThreadStart(ai.Update), this);
                         multithreadmanager.StartThread(ai._info.name);
 
                         this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr, 
@@ -177,6 +183,65 @@ namespace TestPlugin
                             { { (byte)245, MonsterInfo.Serialize(mi) } }, 
                             evCode: (byte)(102), 
                             cacheOp: 0);
+
+                        break;
+                    }
+                case 103:
+                    {
+                        PlayerPos mi = (PlayerPos)PlayerPos.Deserialize((byte[])info.Request.Data);
+
+                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr,
+                            senderActor: 0,
+                            targetGroup: 0,
+                            data: new Dictionary<byte, object>()
+                            { { (byte)245, PlayerPos.Serialize(mi) } },
+                            evCode: (byte)(104),
+                            cacheOp: 0);
+
+                        break;
+                    }
+                case 150:
+                    {
+                        PlayerPos mi = (PlayerPos)PlayerPos.Deserialize((byte[])info.Request.Data);
+                        PartitioningInfo pi = new PartitioningInfo();
+                        pi.Init();
+                        pi.objname = mi.userid;
+                        pi.currtile = MapPartitioningButNotPartitioningIsJustSplittingUpTheMap.ReturnTileViaPos(mi.posx, mi.posz);
+                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr,
+                            senderActor: 0,
+                            targetGroup: 0,
+                            data: new Dictionary<byte, object>()
+                            { { (byte)245, PartitioningInfo.Serialize(pi) } },
+                            evCode: info.Request.EvCode,
+                            cacheOp: 0);
+                        break;
+                    }
+                case 151:
+                    {
+                        PlayerPos mi = (PlayerPos)PlayerPos.Deserialize((byte[])info.Request.Data);
+                        ListPartitioningInfo pi = new ListPartitioningInfo();
+                        pi.Init();
+                        pi.playerposx = mi.posx;
+                        pi.playerposz = mi.posz;
+
+                        pi.objname = mi.userid;
+                        pi.currtile = MapPartitioningButNotPartitioningIsJustSplittingUpTheMap.ReturnTileViaPos(mi.posx, mi.posz);
+                        pi._multitile = MapPartitioningButNotPartitioningIsJustSplittingUpTheMap.ReturnSurroundingTilesViaCurrentTile(pi.currtile);
+                        this.PluginHost.BroadcastEvent(target: (byte)info.ActorNr,
+                            senderActor: 0,
+                            targetGroup: 0,
+                            data: new Dictionary<byte, object>()
+                            { { (byte)245, ListPartitioningInfo.Serialize(pi) } },
+                            evCode: info.Request.EvCode,
+                            cacheOp: 0);
+                        break;
+                    }
+                case 180:
+                    {
+
+                        MonsterInfo mi = (MonsterInfo)MonsterInfo.Deserialize((byte[])info.Request.Data);
+                        AI updater = ailist.Find(x => x._info.name == mi.name);
+                        updater._newinfo = mi;
 
                         break;
                     }
@@ -193,6 +258,31 @@ namespace TestPlugin
                             evCode: (byte)(_evCode),
                             cacheOp: 0);
         }
+
+        //public void UpdateAI(object _plugin)
+        //{
+        //    CustomObject co = new CustomObject();
+        //    co.Init();
+        //    co.message = "UpdateAI";
+        //    CustomObject co1 = new CustomObject();
+        //    co1.Init();
+        //    string message = "UpdateAI.";
+        //    while (true)
+        //    {
+        //        this.SendMessage(169,
+        //            CustomObject.Serialize(co)
+        //            );
+        //        foreach (AI ai in ailist)
+        //        {
+        //            co1.message = message + ai._info.name;
+        //            this.SendMessage(169,
+        //            CustomObject.Serialize(co1)
+        //            );
+        //            ai.Update(_plugin);
+        //        }
+        //        System.Threading.Thread.Sleep(100);
+        //    }
+        //}
     }
 }
 
